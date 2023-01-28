@@ -6,7 +6,7 @@ Wang Xiang et al. Neural Graph Collaborative Filtering. In SIGIR 2019.
 @author: Xiang Wang (xiangwang@u.nus.edu)
 '''
 import utility.metrics as metrics
-from utility.parser import parse_args
+from utility.parser import parse_args_NGCF
 from dataset.load_data import *
 import multiprocessing
 import heapq
@@ -14,7 +14,7 @@ import numpy as np
 
 cores = multiprocessing.cpu_count() // 2
 
-args = parse_args()
+args = parse_args_NGCF()
 Ks = eval(args.Ks)
 
 data_generator = rcs_dataset(path=args.data_path + args.dataset, batch_size=args.batch_size)

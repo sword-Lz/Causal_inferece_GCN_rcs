@@ -3,11 +3,15 @@ from utility.helper import *
 from utility.batch_test import *
 from time import time
 import torch.optim as optim
+from tqdm import tqdm
+from tensorboardX import SummaryWriter
+
+
 def trainer(args, snapshot_path):
     from dataset.load_data import rcs_dataset
     args.device = torch.device('cuda:' + str(args.gpu_id))
 
-    plain_adj, norm_adj, mean_adj = rcs_dataset.get_adj_mat()
+    plain_adj, norm_adj, mean_adj = data_generator.get_adj_mat()
 
     args.node_dropout = eval(args.node_dropout)
     args.mess_dropout = eval(args.mess_dropout)
@@ -23,11 +27,13 @@ def trainer(args, snapshot_path):
     *********************************************************
     Train.
     """
+    writer = SummaryWriter(snapshot_path + '/log')
     cur_best_pre_0, stopping_step = 0, 0
     optimizer = optim.Adam(model.parameters(), lr=args.lr)
-
+    iterator = tqdm(range(args.max_epochs), ncols=70)
     loss_loger, pre_loger, rec_loger, ndcg_loger, hit_loger = [], [], [], [], []
-    for epoch in range(args.epoch):
+    iter_num = 0
+    for epoch in iterator:
         t1 = time()
         loss, mf_loss, emb_loss = 0., 0., 0.
         n_batch = data_generator.n_train // args.batch_size + 1
@@ -49,6 +55,12 @@ def trainer(args, snapshot_path):
             loss += batch_loss
             mf_loss += batch_mf_loss
             emb_loss += batch_emb_loss
+
+            writer.add_scalar('info/lr', args.lr, iter_num)
+            writer.add_scalar('info/total_loss', loss, iter_num)
+            writer.add_scalar('info/mf_loss', mf_loss, iter_num)
+            writer.add_scalar('info/emb_loss', emb_loss, iter_num)
+            iter_num += 1
 
         if (epoch + 1) % 10 != 0:
             if args.verbose > 0 and epoch % args.verbose == 0:
@@ -81,8 +93,8 @@ def trainer(args, snapshot_path):
         # *********************************************************
         # save the user & item embeddings for pretraining.
         if ret['recall'][0] == cur_best_pre_0 and args.save_flag == 1:
-            torch.save(model.state_dict(), args.weights_path + str(epoch) + '.pkl')
-            print('save the weights in path: ', args.weights_path + str(epoch) + '.pkl')
+            torch.save(model.state_dict(), snapshot_path + '/' + str(epoch) + '.pkl')
+            print('save the weights in path: ', snapshot_path + '/' + str(epoch) + '.pkl')
 
     recs = np.array(rec_loger)
     pres = np.array(pre_loger)
@@ -99,3 +111,5 @@ def trainer(args, snapshot_path):
                   '\t'.join(['%.5f' % r for r in ndcgs[idx]]))
 
     record(snapshot_path, final_perf, rec_loger, pre_loger, ndcg_loger, hit_loger)
+    writer.close()
+    return 'finished'
