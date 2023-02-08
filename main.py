@@ -1,5 +1,3 @@
-import argparse
-import logging
 import os
 import random
 import numpy as np
@@ -7,9 +5,7 @@ import torch
 
 # import torch.backends.cudnn as cudnn
 
-from dataset.load_data import rcs_dataset
-from model.NGCF import NGCF
-from trainer import trainer
+from train.trainer_NGCF import trainer_NGCF
 import warnings
 from utility.parser import parse_args_NGCF
 
@@ -45,4 +41,4 @@ if __name__ == "__main__":
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    trainer(args, snapshot_path)
+    trainer_NGCF(args, snapshot_path)

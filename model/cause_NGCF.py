@@ -3,9 +3,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 
-class NGCF(nn.Module):
+class NGCF_cause(nn.Module):
     def __init__(self, n_user, n_item, norm_adj, args):
-        super(NGCF, self).__init__()
+        super(NGCF_cause, self).__init__()
         self.n_user = n_user
         self.n_item = n_item
         self.device = args.device
@@ -26,6 +26,7 @@ class NGCF(nn.Module):
         label0 = torch.zeros([self.batch_size, 1])
         self.label = torch.cat(label1, label0)
 
+
     def init_weight(self):
         initializer = nn.init.xavier_uniform_
 
@@ -42,7 +43,10 @@ class NGCF(nn.Module):
             weight_dict.update({'b_gc_%d' % k: nn.Parameter(initializer(torch.empty(1, layers[k + 1])))})
             weight_dict.update({'W_bi_%d' % k: nn.Parameter(initializer(torch.empty(layers[k], layers[k + 1])))})
             weight_dict.update({'b_bi_%d' % k: nn.Parameter(initializer(torch.empty(1, layers[k + 1])))})
-
+        weight_dict.update({'user_b': nn.Parameter(initializer(torch.zeros([self.num_users])))})
+        weight_dict.update({'prod_b': nn.Parameter(initializer(torch.zeros([self.num_products])))})
+        weight_dict.update({'alpha': nn.Parameter(initializer(torch.empty(1)))})
+        weight_dict.update({'global_bias': nn.Parameter(initializer(torch.empty(1)))})
         return embedding_dict, weight_dict
 
     def _convert_sp_mat_to_sp_tensor(self, X):
@@ -78,9 +82,21 @@ class NGCF(nn.Module):
         emb_loss = self.decay * regularizer / self.batch_size
 
         return mf_loss + emb_loss, mf_loss, emb_loss
-    def create_cause_loss(self, users, pos_items, neg_items):
+
+    def create_cause_loss(self, users, items, logits, prediction):
         users = torch.cat([users, users], 0)
-        items = torch.cat([pos_items, neg_items], 0)
+        log_loss = torch.mean(
+            nn.cross_entropy(logits=logits, labels=self.label))
+
+        # Adding the regularizer term on user vct and prod vct and their bias terms
+        reg_term = self.l2_pen * (torch.norm(users, 2) + torch.norm(items, 2))
+        reg_term_biases = self.l2_pen * (torch.norm(self.prod_b, 2) + torch.norm(self.user_b, 2))
+        factual_loss = log_loss + reg_term + reg_term_biases
+
+        # Adding the counter-factual loss
+        loss = factual_loss + (self.cf_pen * self.cf_loss)  # Imbalance loss
+        mse_loss = torch.nn.MSELoss(labels=items, predictions=prediction)
+        return loss, mse_loss, factual_loss
 
     def rating(self, u_g_embeddings, pos_i_g_embeddings):
         return torch.matmul(u_g_embeddings, pos_i_g_embeddings)
@@ -120,7 +136,14 @@ class NGCF(nn.Module):
         i_g_embeddings = all_embeddings[self.n_user:, :]
 
         u_g_embeddings = u_g_embeddings[users, :]
-        pos_i_g_embeddings = i_g_embeddings[pos_items, :]
-        neg_i_g_embeddings = i_g_embeddings[neg_items, :]
+        # pos_i_g_embeddings = i_g_embeddings[pos_items, :]
+        # neg_i_g_embeddings = i_g_embeddings[neg_items, :]
+        i_g_embeddings =  i_g_embeddings[pos_items+neg_items, :]
+        emb_logits = self.weight_dict['alpha'] * torch.unsqueeze(torch.sum(torch.mul(u_g_embeddings, i_g_embeddings), 1),
+                                                                 dim=1)
+        logits = torch.unsqueeze(torch.add(self.weight_dict['user_b'][users], self.weight_dict['prod_b'][pos_items+neg_items]), 1) + \
+                 self.weight_dict['global_bias']
+        logits = emb_logits + logits
 
-        return u_g_embeddings, pos_i_g_embeddings, neg_i_g_embeddings
+        prediction = nn.sigmoid(logits)
+        return u_g_embeddings, i_g_embeddings, logits, prediction

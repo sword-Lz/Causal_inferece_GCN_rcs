@@ -1,26 +1,25 @@
 import torch
-from utility.helper import *
-from utility.batch_test import *
+from ..utility.helper import *
+from ..utility.batch_test import *
 from time import time
 import torch.optim as optim
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
 
 
-def trainer(args, snapshot_path):
-    from dataset.load_data import rcs_dataset
+def trainer_NGCF(args, snapshot_path):
+    #from dataset.load_data import rcs_dataset
     args.device = torch.device('cuda:' + str(args.gpu_id))
 
     plain_adj, norm_adj, mean_adj = data_generator.get_adj_mat()
 
     args.node_dropout = eval(args.node_dropout)
     args.mess_dropout = eval(args.mess_dropout)
-    if args.model == 'NGCF':
-        from model.NGCF import NGCF
-        model = NGCF(data_generator.n_users,
-                     data_generator.n_items,
-                     norm_adj,
-                     args).to(args.device)
+    from ..model.NGCF import NGCF
+    model = NGCF(data_generator.n_users,
+                 data_generator.n_items,
+                 norm_adj,
+                 args).to(args.device)
 
     t0 = time()
     """
