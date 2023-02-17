@@ -36,7 +36,7 @@ def parse_args_NGCF():
     parser.add_argument('--adj_type', nargs='?', default='norm',
                         help='Specify the type of the adjacency (laplacian) matrix from {plain, norm, mean}.')
 
-    parser.add_argument('--gpu_id', type=int, default=6)
+    parser.add_argument('--gpu_id', type=int, default=0)
 
     parser.add_argument('--node_dropout_flag', type=int, default=1,
                         help='0: Disable node dropout, 1: Activate node dropout')
@@ -48,7 +48,7 @@ def parse_args_NGCF():
     parser.add_argument('--Ks', nargs='?', default='[20, 40, 60, 80, 100]',
                         help='Output sizes of every layer')
 
-    parser.add_argument('--save_flag', type=int, default=0,
+    parser.add_argument('--save_flag', type=int, default=1,
                         help='0: Disable model saver, 1: Activate model saver')
 
     parser.add_argument('--test_flag', nargs='?', default='part',

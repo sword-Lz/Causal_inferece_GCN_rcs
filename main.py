@@ -5,7 +5,7 @@ import torch
 
 # import torch.backends.cudnn as cudnn
 
-from train.trainer_NGCF import trainer_NGCF
+from train.trainer_NGCF import *
 import warnings
 from utility.parser import parse_args_NGCF
 
@@ -41,4 +41,4 @@ if __name__ == "__main__":
 
     device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
 
-    trainer_NGCF(args, snapshot_path)
+    trainer_cause_NGCF(args, snapshot_path)

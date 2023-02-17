@@ -1,9 +1,3 @@
-import tensorflow as tf
-dataset_location = 'data/amazon-book/train.txt'
-record_defaults = [[1], [1], [0.]] # Sets the type of the resulting tensors and default values
-# Dataset is in the format - UserID ProductID Rating
-dataset = tf.data.TextLineDataset(dataset_location).map(lambda line: tf.io.decode_csv(line, record_defaults=record_defaults))
-dataset = dataset.shuffle(buffer_size=10000)
-dataset = dataset.batch(1024)
-dataset = dataset.repeat(10)
-print(list(dataset.as_numpy_iterator()))
+from utility.helper import record
+import numpy as np
+record('.', np.array([2,3]), np.array([[1,2,6,5,5],[2,3,3,1,4]]), np.array([[1,2,2,5,6],[2,3,4,5,2]]))

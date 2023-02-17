@@ -22,9 +22,6 @@ class NGCF(nn.Module):
         self.embedding_dict, self.weight_dict = self.init_weight()
 
         self.sparse_norm_adj = self._convert_sp_mat_to_sp_tensor(self.norm_adj).to(self.device)
-        label1 = torch.ones([self.batch_size, 1])
-        label0 = torch.zeros([self.batch_size, 1])
-        self.label = torch.cat(label1, label0)
 
     def init_weight(self):
         initializer = nn.init.xavier_uniform_
@@ -78,12 +75,13 @@ class NGCF(nn.Module):
         emb_loss = self.decay * regularizer / self.batch_size
 
         return mf_loss + emb_loss, mf_loss, emb_loss
+
     def create_cause_loss(self, users, pos_items, neg_items):
         users = torch.cat([users, users], 0)
         items = torch.cat([pos_items, neg_items], 0)
 
     def rating(self, u_g_embeddings, pos_i_g_embeddings):
-        return torch.matmul(u_g_embeddings, pos_i_g_embeddings)
+        return torch.matmul(u_g_embeddings, pos_i_g_embeddings.t())
 
     def forward(self, users, pos_items, neg_items, drop_flag=True):
 
@@ -107,7 +105,7 @@ class NGCF(nn.Module):
             bi_embeddings = torch.matmul(bi_embeddings, self.weight_dict['W_bi_%d' % k] + \
                                          self.weight_dict['b_bi_%d' % k])
 
-            ego_embeddings = nn.LeakyReLU(negative_slope=0.2)(sum_embeddings+bi_embeddings)
+            ego_embeddings = nn.LeakyReLU(negative_slope=0.2)(sum_embeddings + bi_embeddings)
 
             ego_embeddings = nn.Dropout(self.mess_dropout[k])(ego_embeddings)
 
